@@ -11,7 +11,7 @@ Penggunaan konfigurasi ini berhasil mengatasi kendala pencetakan lambat di Linux
 Anda dapat memasang driver ini secara langsung di PC client (Linux Mint) cukup dengan satu baris perintah terminal tanpa perlu melakukan `git clone` manual:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<username>/<repo>/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/andin1st/EPSON-LQ310/main/install.sh | sudo bash
 ```
 
 > **Catatan:** Ganti `<username>/<repo>` pada URL dengan nama akun dan repositori GitHub Anda.
@@ -41,9 +41,9 @@ Jika Anda telah mengunduh / melakukan `git clone` repositori ini secara lokal, A
 ```
 
 ### 3. Instalasi Client Jaringan (Shared IPP Printer)
-Jika printer terhubung ke PC server lain di jaringan lokal dan dibagikan via CUPS/IPP:
+Biasanya jika printer sudah di install maka di komputer client akan langsung terdeteksi dan terpasang, namun jika tidak terdeteksi dapat ditambahkan secara manual dengan cara:
 ```bash
-./install.sh --client ipp://<IP-SERVER>:631/printers/<NAMA-QUEUE> --name LQ-310-IT --default --test
+./install.sh --client ipp://<IP-SERVER/hostname.local>:631/printers/<NAMA-Printer-Server> --name <Nama-Printer-Client> --default --test
 ```
 
 ---
