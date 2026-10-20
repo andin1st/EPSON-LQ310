@@ -1,0 +1,58 @@
+#!/bin/bash
+# foomatic-rip wrapper for the Epson LQ-310 on 5.5-inch continuous forms.
+#
+# The Ghostscript "epson" device never sends ESC C (set page length), so
+# on form feed the printer uses its panel default (11 inch) and jumps a
+# sheet. Worse, ESC @ restores that panel default, and the driver emits
+# ESC @ at the start of *every* page. So the wrapper re-injects ESC C after
+# each ESC @; injecting it only once would fix page 1 but leave every later
+# FF advancing a full 11-inch page (skipping a 5.5-inch form each time).
+#
+# The driver terminates the job with CR + FF + ESC @ ("\r\f\x1b@"). We keep
+# exactly one trailing FF: the printer advances one form (ESC C page length)
+# to the next perforation and stops there, so the paper stays aligned and the
+# next job starts with its top margin. Multiple trailing FFs (which would
+# eject extra blank forms) are collapsed to one.
+#
+# Ghostscript's PDF parser reports problems (for example "Transparency
+# Group, Form XObject execution corrupted the stack." plus "Output may be
+# incorrect.") through pdfformaterror, which writes to %stdout. Because the
+# PPD renders with "-sOutputFile=-", %stdout shares fd 1 with the print
+# data and those messages would be printed on the paper. The PPD now passes
+# "-sstdout=%stderr" so they go to the CUPS log instead; as a safety net we
+# also scrub any such diagnostic out of the byte stream below.
+#
+# Page length in lines = inches x 6 (6 lines/inch is the default
+# line spacing after ESC @). 5.5 inch -> 33, 8.5 inch -> 51.
+export PAGE_LINES=33
+
+set -o pipefail
+
+/usr/bin/foomatic-rip "$@" | perl -e '
+  my $n = $ENV{PAGE_LINES} || 33;
+  local $/;
+  my $d = <STDIN>;
+
+  # Safety net: drop any Ghostscript PDF-parser diagnostics that leaked into
+  # the device stream (they would otherwise be printed on the paper).
+  $d =~ s/^[ \t]*\*{4}[ \t]+(?:Error|Warning):[^\n]*\n(?:[ \t]+[^\n]*\n)*//mg;
+  $d =~ s/^[ \t]*Output may be incorrect\.[^\n]*\n//mg;
+
+  # ESC @ resets the printer to its panel defaults (page length for tractor =
+  # 11 inch) and the driver sends ESC @ at the start of every page, so we must
+  # re-send ESC C after EVERY ESC @. Each new page starts at a form boundary
+  # (top-of-form), which is where ESC C is required to be sent.
+  my $init = "\x1b@";
+  my $setc = "\x1bC" . chr($n);
+  $d =~ s/\Q$init\E/$init$setc/g;
+  if (substr($d, 0, 2) ne $init) {
+    $d = $setc . $d;
+  }
+
+  # Keep exactly one trailing form feed (collapse any run of them, plus the
+  # device reset that follows) so the printer advances one form to the next
+  # perforation and stops there, leaving the next job aligned at the top.
+  $d =~ s/[\r\n]*(?:\x0c[\r\n]*)+(?:\Q$init\E\Q$setc\E)?\z/\x0c/;
+
+  print $d;
+'
