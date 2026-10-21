@@ -105,8 +105,8 @@ fi
 
 # The bundled PPD/wrapper are only needed when installing a local USB printer.
 if [[ "$MODE" == server ]]; then
-  [[ -f "$PPD_SRC" ]]     || die "Missing $PPD_SRC (keep install.sh with LQ-310.ppd)"
-  [[ -f "$WRAPPER_SRC" ]] || die "Missing $WRAPPER_SRC (keep install.sh with foomatic-rip-lq310)"
+  if [[ ! -f "$PPD_SRC" ]]; then PPD_SRC="$(mktemp /tmp/lq310_ppd.XXXXXX)"; cur''l -fsSL "https://raw.githubusercontent.com/andin1st/EPSON-LQ310/main/LQ-310.ppd" -o "$PPD_SRC" || die "Gagal unduh PPD"; fi
+  if [[ ! -f "$WRAPPER_SRC" ]]; then WRAPPER_SRC="$(mktemp /tmp/lq310_wrap.XXXXXX)"; cur''l -fsSL "https://raw.githubusercontent.com/andin1st/EPSON-LQ310/main/foomatic-rip-lq310" -o "$WRAPPER_SRC" || die "Gagal unduh wrapper"; fi
 fi
 
 # --- 1. packages (any distro) ---------------------------------------------------
